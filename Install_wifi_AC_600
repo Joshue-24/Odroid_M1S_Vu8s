@@ -1,0 +1,215 @@
+
+## 📄 Archivo 2: INSTALL.txt
+
+```text
+================================================================================
+  TP-LINK ARCHER T2U PLUS - INSTALLATION GUIDE FOR ODROID M1S
+================================================================================
+
+  System: Odroid M1S
+  OS: Ubuntu 20.04.6 LTS
+  Architecture: ARM64
+  Adapter: TP-Link Archer T2U Plus AC600 Dual Band
+  Chipset: Realtek RTL8821AU
+
+================================================================================
+  PREREQUISITES
+================================================================================
+
+  - Odroid M1S with Ubuntu 20.04.6 installed
+  - Internet connection via Ethernet for initial setup
+  - TP-Link Archer T2U Plus USB adapter
+
+================================================================================
+  STEP 1: UPDATE SYSTEM AND INSTALL DEPENDENCIES
+================================================================================
+
+  Run the following commands:
+
+  sudo apt update && sudo apt upgrade -y
+  sudo apt install -y build-essential dkms git bc linux-headers-$(uname -r)
+
+================================================================================
+  STEP 2: VERIFY USB ADAPTER DETECTION
+================================================================================
+
+  Connect the USB adapter and run:
+
+  lsusb | grep -i realtek
+
+  Expected output:
+  Bus 001 Device 002: ID 2357:0120 TP-Link Archer T2U PLUS [RTL8821AU]
+
+================================================================================
+  STEP 3: DOWNLOAD AND INSTALL DRIVER
+================================================================================
+
+  Clone the driver repository:
+
+  git clone https://github.com/morrownr/8821au-20210708.git
+  cd 8821au-20210708
+
+  Install the driver:
+
+  sudo ./install-driver.sh
+
+================================================================================
+  STEP 4: REBOOT SYSTEM
+================================================================================
+
+  sudo reboot
+
+================================================================================
+  STEP 5: VERIFY INSTALLATION
+================================================================================
+
+  After reboot, verify wireless interface:
+
+  iwconfig
+
+  Expected output:
+  wlan0     unassociated  Nickname:"WIFI@RTL8821AU"
+            Mode:Managed  Frequency=2.412 GHz  Access Point: Not-Associated
+            Sensitivity:0/0
+            Retry:off   RTS thr:off   Fragment thr:off
+            Power Management:off
+            Link Quality:0  Signal level:0  Noise level:0
+
+  Verify interface with ip command:
+
+  ip link show
+
+  Expected output:
+  3: wlan0: <NO-CARRIER,BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc mq 
+     state DORMANT mode DORMANT group default qlen 1000
+     link/ether a8:29:48:af:e9:19 brd ff:ff:ff:ff:ff:ff
+
+================================================================================
+  STEP 6: CONNECT TO WIFI NETWORK
+================================================================================
+
+  List available networks:
+
+  nmcli dev wifi list
+
+  Connect to your network:
+
+  nmcli dev wifi connect "YOUR_NETWORK_NAME" password "YOUR_PASSWORD"
+
+  Expected output:
+  Device 'wlan0' successfully activated with '802dc69b-a3a9-4de8-9f63-d50de7092fa4'.
+
+  Verify saved connection:
+
+  nmcli connection show
+
+  Expected output:
+  NAME                UUID                                  TYPE      DEVICE
+  Wired connection 1  aceac0d5-83af-3c9c-8569-de03358d7e99  ethernet  eth0
+  YOUR_NETWORK_NAME   802dc69b-a3a9-4de8-9f63-d50de7092fa4  wifi      wlan0
+
+  Test internet connectivity:
+
+  ping -c 4 google.com
+
+================================================================================
+  STEP 7: ENABLE WIFI ICON IN GNOME DESKTOP (OPTIONAL)
+================================================================================
+
+  If WiFi icon doesn't appear in system tray:
+
+  Install NetworkManager GNOME applet:
+
+  sudo apt install network-manager-gnome
+
+  Run applet:
+
+  nm-applet &
+
+  Configure auto-start:
+
+  mkdir -p ~/.config/autostart
+
+  cat > ~/.config/autostart/nm-applet.desktop << EOF
+  [Desktop Entry]
+  Type=Application
+  Name=Network Manager Applet
+  Exec=nm-applet
+  Hidden=false
+  NoDisplay=false
+  X-GNOME-Autostart-enabled=true
+  EOF
+
+  Reboot to apply:
+
+  sudo reboot
+
+================================================================================
+  FINAL STATUS
+================================================================================
+
+  [OK] RTL8821AU Driver installed
+  [OK] wlan0 Interface active
+  [OK] WiFi Connection established
+  [OK] Auto-reconnect configured
+  [OK] Desktop icon enabled
+
+================================================================================
+  USEFUL COMMANDS
+================================================================================
+
+  nmcli dev status                              - Show network device status
+  nmcli dev wifi list                           - List available WiFi networks
+  nmcli dev wifi connect "SSID" password "PASS" - Connect to WiFi
+  nmcli connection show                         - Show saved connections
+  nmcli connection delete "SSID"                - Delete saved connection
+  iwconfig                                      - Show wireless interface info
+  ip addr show wlan0                            - Show IP address
+  ping -c 4 google.com                          - Test internet connectivity
+  sudo systemctl restart NetworkManager         - Restart NetworkManager
+
+================================================================================
+  TROUBLESHOOTING
+================================================================================
+
+  PROBLEM: Driver doesn't compile
+  SOLUTION: Verify ARM64 platform in Makefile
+    cd 8821au-20210708
+    nano Makefile
+    # Ensure: CONFIG_PLATFORM_ARM64 = y
+
+  PROBLEM: wlan0 interface not appearing
+  SOLUTION: Check if module is loaded
+    lsmod | grep 8821au
+    sudo modprobe 8821au
+    dmesg | grep -i rtl
+
+  PROBLEM: Cannot see WiFi networks
+  SOLUTION: Bring interface up manually
+    sudo ip link set wlan0 up
+    sudo iwlist wlan0 scan | grep ESSID
+
+  PROBLEM: NetworkManager not managing WiFi
+  SOLUTION: Restart NetworkManager
+    systemctl status NetworkManager
+    sudo systemctl restart NetworkManager
+
+================================================================================
+  NOTES
+================================================================================
+
+  - Driver installed via DKMS (auto-recompiles on kernel updates)
+  - WiFi connection saved for auto-reconnect on restart
+  - Adapter supports 2.4 GHz and 5 GHz bands
+  - Tested on Ubuntu 20.04.6 with kernel 4.19.x
+
+================================================================================
+  REFERENCES
+================================================================================
+
+  Driver Repository: https://github.com/morrownr/8821au-20210708
+  Odroid M1S Wiki:   https://wiki.odroid.com/odroid-m1s/odroid-m1s
+  TP-Link Product:   https://www.tp-link.com/us/home-networking/usb-adapter/archer-t2u-plus/
+
+
+================================================================================
