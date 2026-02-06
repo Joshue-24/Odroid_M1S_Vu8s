@@ -1,0 +1,236 @@
+================================================================================
+  X11VNC - INSTALACIÓN Y CONFIGURACIÓN EN ODROID M1S
+  Modo Espejo (Screen Mirroring)
+================================================================================
+
+  Sistema: Odroid M1S
+  OS: Ubuntu 20.04.6 LTS
+  Arquitectura: ARM64
+  Modo: Espejo de pantalla (misma imagen en pantalla física y VNC)
+
+================================================================================
+  DESCRIPCIÓN
+================================================================================
+
+  Esta guía configura x11vnc para compartir la pantalla existente del Odroid
+  M1S, permitiendo:
+  
+  - Ver el mismo escritorio en pantalla física y VNC
+  - Controlar el Odroid remotamente con mouse y teclado
+  - Inicio automático del servicio VNC al encender
+  - Múltiples conexiones simultáneas
+
+================================================================================
+  PASO 1: INSTALAR X11VNC
+================================================================================
+
+  sudo apt update
+  sudo apt install x11vnc
+
+================================================================================
+  PASO 2: CREAR CONTRASEÑA VNC
+================================================================================
+
+  x11vnc -storepasswd
+
+  - Ingresa una contraseña cuando lo solicite
+  - Confirma la contraseña
+  - La contraseña se guarda en: ~/.vnc/passwd
+
+================================================================================
+  PASO 3: PROBAR X11VNC MANUALMENTE (OPCIONAL)
+================================================================================
+
+  x11vnc -display :0 -auth guess -forever -loop -noxdamage -repeat -rfbauth ~/.vnc/passwd -rfbport 5900 -shared
+
+  Parámetros:
+  -display :0      = Usa la pantalla actual
+  -auth guess      = Detecta autenticación automáticamente
+  -forever         = No cierra después de desconectar cliente
+  -loop            = Reinicia si hay error
+  -noxdamage       = Mejor compatibilidad
+  -repeat          = Permite teclas repetidas
+  -rfbauth         = Usa archivo de contraseña
+  -rfbport 5900    = Puerto VNC estándar
+  -shared          = Permite múltiples conexiones
+
+  Presiona Ctrl+C para detener la prueba.
+
+================================================================================
+  PASO 4: CREAR SERVICIO SYSTEMD
+================================================================================
+
+  Ejecutar este comando completo:
+
+  sudo tee /etc/systemd/system/x11vnc.service << 'EOF'
+  [Unit]
+  Description=x11vnc VNC Server
+  After=display-manager.service network.target
+
+  [Service]
+  Type=simple
+  User=odroid
+  Environment=DISPLAY=:0
+  ExecStart=/usr/bin/x11vnc -display :0 -auth guess -forever -loop -noxdamage -repeat -rfbauth /home/odroid/.vnc/passwd -rfbport 5900 -shared
+  Restart=on-failure
+  RestartSec=3
+
+  [Install]
+  WantedBy=multi-user.target
+  EOF
+
+================================================================================
+  PASO 5: HABILITAR E INICIAR SERVICIO
+================================================================================
+
+  Recargar configuración de systemd:
+
+  sudo systemctl daemon-reload
+
+  Habilitar inicio automático:
+
+  sudo systemctl enable x11vnc.service
+
+  Iniciar servicio:
+
+  sudo systemctl start x11vnc.service
+
+  Verificar estado:
+
+  sudo systemctl status x11vnc.service
+
+================================================================================
+  PASO 6: OBTENER IP DEL ODROID
+================================================================================
+
+  hostname -I
+
+  Ejemplo de salida:
+  192.168.1.39 192.168.3.4
+
+  Anota la IP que corresponda a tu red local.
+
+================================================================================
+  PASO 7: CONECTAR DESDE CLIENTE VNC
+================================================================================
+
+  WINDOWS:
+  - Descargar RealVNC Viewer: https://www.realvnc.com/download/viewer/
+  - Abrir y conectar a: IP_DEL_ODROID:5900
+  - Ejemplo: 192.168.1.39:5900
+
+  MAC:
+  - Abrir Finder → Ir → Conectar al servidor
+  - Escribir: vnc://IP_DEL_ODROID:5900
+  - Ejemplo: vnc://192.168.1.39:5900
+
+  LINUX:
+  - Instalar cliente: sudo apt install remmina
+  - O usar: sudo apt install vinagre
+  - Conectar a: IP_DEL_ODROID:5900
+
+  ANDROID / iOS:
+  - Descargar "VNC Viewer" de la tienda de apps
+  - Conectar a: IP_DEL_ODROID:5900
+
+  Ingresar la contraseña creada en el Paso 2.
+
+================================================================================
+  VERIFICACIÓN FINAL
+================================================================================
+
+  [OK] x11vnc instalado
+  [OK] Contraseña VNC configurada
+  [OK] Servicio systemd creado
+  [OK] Inicio automático habilitado
+  [OK] Conexión espejo funcionando
+
+================================================================================
+  COMANDOS ÚTILES
+================================================================================
+
+  Ver estado del servicio:
+  sudo systemctl status x11vnc.service
+
+  Reiniciar servicio:
+  sudo systemctl restart x11vnc.service
+
+  Detener servicio:
+  sudo systemctl stop x11vnc.service
+
+  Deshabilitar inicio automático:
+  sudo systemctl disable x11vnc.service
+
+  Ver IP del Odroid:
+  hostname -I
+
+  Cambiar contraseña VNC:
+  x11vnc -storepasswd
+  sudo systemctl restart x11vnc.service
+
+  Ver logs del servicio:
+  sudo journalctl -u x11vnc.service -f
+
+================================================================================
+  SOLUCIÓN DE PROBLEMAS
+================================================================================
+
+  PROBLEMA: No puedo conectar desde el cliente VNC
+  SOLUCIÓN: Verificar que el servicio esté corriendo
+    sudo systemctl status x11vnc.service
+    
+  SOLUCIÓN: Verificar que estés en la misma red
+    - Tu PC/teléfono debe tener IP en el mismo rango
+    - Ejemplo: Si Odroid es 192.168.1.39, tu PC debe ser 192.168.1.X
+
+  PROBLEMA: Conexión rechazada
+  SOLUCIÓN: Verificar firewall
+    sudo ufw status
+    sudo ufw allow 5900/tcp
+
+  PROBLEMA: Pantalla negra en VNC
+  SOLUCIÓN: Reiniciar servicio
+    sudo systemctl restart x11vnc.service
+
+  PROBLEMA: Error de autenticación
+  SOLUCIÓN: Verificar archivo de contraseña
+    ls -la ~/.vnc/passwd
+    x11vnc -storepasswd
+    sudo systemctl restart x11vnc.service
+
+  PROBLEMA: El servicio no inicia al arrancar
+  SOLUCIÓN: Verificar que esté habilitado
+    sudo systemctl is-enabled x11vnc.service
+    sudo systemctl enable x11vnc.service
+
+================================================================================
+  NOTAS DE SEGURIDAD
+================================================================================
+
+  - VNC transmite datos sin cifrar por defecto
+  - Para uso en red local es aceptable
+  - Para acceso remoto desde internet, usar túnel SSH:
+    
+    ssh -L 5900:localhost:5900 odroid@IP_DEL_ODROID
+    
+    Luego conectar VNC a: localhost:5900
+
+================================================================================
+  INFORMACIÓN ADICIONAL
+================================================================================
+
+  Puerto VNC: 5900
+  Protocolo: RFB (Remote Framebuffer)
+  Modo: Espejo de pantalla existente
+  Usuario: odroid
+  Archivo contraseña: /home/odroid/.vnc/passwd
+  Archivo servicio: /etc/systemd/system/x11vnc.service
+
+================================================================================
+  REFERENCIAS
+================================================================================
+
+  x11vnc Documentation: https://github.com/LibVNC/x11vnc
+  RealVNC Viewer: https://www.realvnc.com/download/viewer/
+  Remmina: https://remmina.org/
+
